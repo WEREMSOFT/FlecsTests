@@ -3018,7 +3018,7 @@ Tigr *tigrWindow(int w, int h, const char *title, int flags)
 
 	scale = tigrEnforceScale(scale, flags);
 
-	NSRect rect = {{0, 0}, {w * scale, h * scale}};
+	NSRect rect = {{0, 0}, {w * scale * 0.5, h * scale * 0.5}};
 	id windowAlloc = objc_msgSend_id((id)objc_getClass("NSWindow"), sel_registerName("alloc"));
 	id window = ((id (*)(id, SEL, NSRect, NSUInteger, NSUInteger, BOOL))objc_msgSend)(windowAlloc, sel_registerName("initWithContentRect:styleMask:backing:defer:"), rect, 15, 2, NO);
 	#ifndef ARC_AVAILABLE

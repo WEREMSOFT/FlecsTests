@@ -3,11 +3,11 @@
 #include "tigr.h"
 #include <math.h>
 
-#define MATRIX_SIZE_WIDTH 100
-#define MATRIX_SIZE_HEIGHT 100
+#define MATRIX_SIZE_WIDTH 200
+#define MATRIX_SIZE_HEIGHT 200
 
-#define SCREEN_WIDTH  320
-#define SCREEN_HEIGHT  240
+#define SCREEN_WIDTH  800
+#define SCREEN_HEIGHT  600
 
 #define SCREEN_CENTER_X SCREEN_WIDTH / 2
 #define SCREEN_CENTER_Y SCREEN_HEIGHT / 2
@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     /* Limit application to 60 FPS */
     ecs_set_target_fps(world, 60);
 
-    screen = tigrWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello", TIGR_3X);
+    screen = tigrWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello", TIGR_2X);
 
     /* Progress world in main loop (invokes Move system) */
     while (!tigrClosed(screen) && !tigrKeyDown(screen, TK_ESCAPE)) {
