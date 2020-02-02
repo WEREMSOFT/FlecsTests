@@ -1,6 +1,9 @@
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
+#include "tigr.h"
 #include <stdio.h>
 #include "flecs.h"
-#include "tigr.h"
 #include <math.h>
 
 #define MATRIX_SIZE_WIDTH 200
@@ -88,9 +91,14 @@ void InitMatrix(ecs_rows_t *rows){
     }
 
 }
+ecs_world_t *world;
+void game_update(void) {
+    ecs_progress(world, 0);
+}
 
 int main(int argc, char *argv[]) {
-    ecs_world_t *world = ecs_init_w_args(argc, argv);
+
+    world = ecs_init_w_args(argc, argv);
 
     /* Register components and systems */
     ECS_COMPONENT(world, PositionX);
@@ -112,10 +120,14 @@ int main(int argc, char *argv[]) {
 
     screen = tigrWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello", TIGR_2X);
 
+#if defined(PLATFORM_WEB)
+    emscripten_set_main_loop(game_update, 0, 1);
+#else
     /* Progress world in main loop (invokes Move system) */
     while (!tigrClosed(screen) && !tigrKeyDown(screen, TK_ESCAPE)) {
         ecs_progress(world, 0);
     }
+#endif
     tigrFree(screen);
     return ecs_fini(world);
 }
