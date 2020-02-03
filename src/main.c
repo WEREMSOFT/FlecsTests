@@ -1,121 +1,64 @@
 #include <stdio.h>
 #include "flecs.h"
-#include "tigr.h"
-#include <math.h>
 
-#define MATRIX_SIZE_WIDTH 100
-#define MATRIX_SIZE_HEIGHT 100
-
-#define SCREEN_WIDTH  320
-#define SCREEN_HEIGHT  240
-
-#define SCREEN_CENTER_X SCREEN_WIDTH / 2
-#define SCREEN_CENTER_Y SCREEN_HEIGHT / 2
-
-typedef float PositionX;
-typedef float PositionY;
-typedef float PositionZ;
-
-typedef struct Position {
-    float x;
-    float y;
-    float z;
-} Position;
-
-typedef int32_t Speed;
-
-Tigr *screen;
-
-void Render(ecs_rows_t *rows) {
-    ECS_COLUMN(rows, PositionX, x, 1);
-    ECS_COLUMN(rows, PositionY, y, 2);
-    ECS_COLUMN(rows, PositionZ, z, 3);
-    tigrClear(screen, tigrRGB(0x80, 0x90, 0xa0));
-    TPixel px = { 0xff, 0xff, 0xff, 0xff };
-    for (int i = 0; i < rows->count; i ++) {
-        tigrPlot(screen, x[i] * z[i], y[i] * z[i], px);
+void system_evens(ecs_rows_t *rows){
+    printf("evens\n");
+    ecs_entity_t my_tag = ecs_get_system_context(rows->world, rows->system);
+    ECS_COLUMN_ENTITY(rows, tag_to_remove, 1);
+    ECS_COLUMN_ENTITY(rows, tag_to_add, 2);
+    for(int i = 0; i < rows->count; i++){
+        _ecs_remove(rows->world, rows->entities[i], tag_to_remove);
+        // the following line doesn't work: Exception: EXC_BAD_ACCESS (code=1, address=0xf)
+//        _ecs_add(rows->world, rows->entities[i], tag_to_add);
     }
-    tigrUpdate(screen);
 }
 
-float distance(float x, float y) {
-    return sqrtf(powf(SCREEN_CENTER_X - x, 2) + powf(SCREEN_CENTER_Y - y, 2));
+void system_odds(ecs_rows_t *rows){
+    printf("ods\n");
+    ECS_COLUMN_ENTITY(rows, tag_to_remove, 1);
+    ECS_COLUMN_ENTITY(rows, tag_to_add, 2);
+    for(int i = 0; i < rows->count; i++){
+        _ecs_add(rows->world, rows->entities[i], tag_to_add);
+        _ecs_remove(rows->world, rows->entities[i], tag_to_remove);
+    }
 }
 
-void UpdateParticle(ecs_rows_t *rows){
-    ECS_COLUMN(rows, PositionX, x, 1);
-    ECS_COLUMN(rows, PositionY, y, 2);
-
-    static float phase = 0;
-    phase += 10 * rows->delta_time;
-    const int paddingX = 2;
-    const int paddingY = 2;
-    const int offsetX = (SCREEN_WIDTH - MATRIX_SIZE_WIDTH * paddingX) / 2;
-    const int offsetY = (SCREEN_HEIGHT - MATRIX_SIZE_HEIGHT * paddingY) / 2;
-
-    float phaseOffset = 0;
-
-
-    for(int col = 0; col < MATRIX_SIZE_WIDTH; col++){
-        for(int row = 0; row < MATRIX_SIZE_HEIGHT; row++){
-//            phaseOffset += .3;
-            phaseOffset = distance(x[col * MATRIX_SIZE_HEIGHT + row], y[col * MATRIX_SIZE_HEIGHT + row]) * .1;
-            x[col * MATRIX_SIZE_HEIGHT + row] = col * paddingX + offsetX + sin(phase + phaseOffset) * 5;
-            y[col * MATRIX_SIZE_HEIGHT + row] = row * paddingY + offsetY + cos(phase + phaseOffset) * 5;
-        }
-    }
-
-}
-
-void InitMatrix(ecs_rows_t *rows){
-    ECS_COLUMN(rows, PositionX, x, 1);
-    ECS_COLUMN(rows, PositionY, y, 2);
-    ECS_COLUMN(rows, PositionZ, z, 3);
-
-    const int paddingX = 10;
-    const int paddingY = 10;
-    const int offsetX = (SCREEN_WIDTH - MATRIX_SIZE_WIDTH * paddingX) / 2;
-    const int offsetY = (SCREEN_HEIGHT - MATRIX_SIZE_HEIGHT * paddingY) / 2;
-
-    float zDistance = 1.0;
-
-    for(int col = 0; col < MATRIX_SIZE_WIDTH; col++){
-        for(int row = 0; row < MATRIX_SIZE_HEIGHT; row++){
-            x[col * MATRIX_SIZE_HEIGHT + row] = col * paddingX + offsetX;
-            y[col * MATRIX_SIZE_HEIGHT + row] = row * paddingY + offsetY;
-            z[col * MATRIX_SIZE_HEIGHT + row] = zDistance;
-        }
-    }
-
+void system_test_update(ecs_rows_t *rows) {
+    printf("updating\n");
 }
 
 int main(int argc, char *argv[]) {
     ecs_world_t *world = ecs_init_w_args(argc, argv);
+    ECS_TAG(world, tag_evens);
+    ECS_TAG(world, tag_odds);
+    ECS_SYSTEM(world, system_test_update, EcsOnUpdate, 0);
 
-    /* Register components and systems */
-    ECS_COMPONENT(world, PositionX);
-    ECS_COMPONENT(world, PositionY);
-    ECS_COMPONENT(world, PositionZ);
+    ECS_SYSTEM(world, system_evens, EcsOnUpdate, tag_evens, .tag_odds);
+    ecs_set_system_context(world, system_evens, tag_odds);
 
-    ECS_SYSTEM(world, Render, EcsOnUpdate, PositionX, PositionY, PositionZ);
+    ECS_SYSTEM(world, system_odds, EcsOnUpdate, tag_odds, .tag_evens);
+    ecs_set_system_context(world, system_odds, tag_evens);
 
-    ECS_SYSTEM(world, UpdateParticle, EcsOnUpdate, PositionX, PositionY);
 
-    ECS_SYSTEM(world, InitMatrix, EcsOnAdd, PositionX, PositionY, PositionZ);
+    int break_condition = 100;
 
-    ECS_TYPE(world, DotMatrix, PositionX, PositionY, PositionZ);
+    ECS_TYPE(world, Dummy, tag_evens);
+    ecs_new_w_count(world, Dummy, 1);
 
-    ecs_entity_t e = ecs_new_w_count(world, DotMatrix, MATRIX_SIZE_WIDTH * MATRIX_SIZE_HEIGHT);
+    // The system crash here: Exception: EXC_BAD_ACCESS (code=1, address=0xe)
+    // Stack Trace:
+    /*
+     ecs_vector_count
+     ecs_type_merge
+     ecs_merge_entity
+     ecs_merge_commits
+     ecs_stage_merge
+     ecs_merge
+     run_single_thread_stage
+     ecs_process
+     main.c
+     */
+    while(ecs_progress(world, 0) && break_condition--);
 
-    /* Limit application to 60 FPS */
-    ecs_set_target_fps(world, 60);
-
-    screen = tigrWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Hello", TIGR_3X);
-
-    /* Progress world in main loop (invokes Move system) */
-    while (!tigrClosed(screen) && !tigrKeyDown(screen, TK_ESCAPE)) {
-        ecs_progress(world, 0);
-    }
-    tigrFree(screen);
-    return ecs_fini(world);
+    ecs_fini(world);
 }
